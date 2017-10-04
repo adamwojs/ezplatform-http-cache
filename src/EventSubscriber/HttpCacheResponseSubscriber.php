@@ -39,14 +39,17 @@ class HttpCacheResponseSubscriber implements EventSubscriberInterface
 
     public function configureCache(FilterResponseEvent $event)
     {
+        $response = $event->getResponse();
+
         $view = $event->getRequest()->attributes->get('view');
-        if (!$view instanceof CachableView || !$view->isCacheEnabled()) {
-            return;
+        if ($view instanceof CachableView && !$view->isCacheEnabled()) {
+            return ;
         }
 
-        $response = $event->getResponse();
         $this->responseConfigurator->enableCache($response);
         $this->responseConfigurator->setSharedMaxAge($response);
-        $this->dispatcherTagger->tag($this->responseConfigurator, $response, $view);
+        if ($view instanceof CachableView) {
+          $this->dispatcherTagger->tag($this->responseConfigurator, $response, $view);
+        }
     }
 }

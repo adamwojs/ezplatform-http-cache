@@ -1,3 +1,14 @@
+parameters:
+    ezplatform.view_cache.default_configuration.data:
+        enableViewCache: true
+        enableTtlCache: true
+        sharedMaxAge: 30
+
+    ezplatform.view_cache.error_configuration.data:
+        enableViewCache: true
+        enableTtlCache: true
+        sharedMaxAge: 10
+
 services:
     ezplatform.view_cache.response_subscriber:
         class: EzSystems\PlatformHttpCacheBundle\EventSubscriber\HttpCacheResponseSubscriber
@@ -7,12 +18,39 @@ services:
         tags:
             - { name: kernel.event_subscriber }
 
-    ezplatform.view_cache.response_configurator:
-        class: EzSystems\PlatformHttpCacheBundle\ResponseConfigurator\ConfigurableResponseCacheConfigurator
+    ezplatform.view_cache.default_configuration:
+        class: EzSystems\PlatformHttpCacheBundle\ResponseConfigurator\HttpCacheConfiguration
         arguments:
-            - '$content.view_cache$'
-            - '$content.ttl_cache$'
-            - '$content.default_ttl$'
+            - '%ezplatform.view_cache.default_configuration.data%'
+
+    ezplatform.view_cache.error_configuration:
+        class: EzSystems\PlatformHttpCacheBundle\ResponseConfigurator\HttpCacheConfiguration
+        arguments:
+            - '%ezplatform.view_cache.error_configuration.data%'
+
+#    ezplatform.view_cache.default_response_configurator:
+#        class: EzSystems\PlatformHttpCacheBundle\ResponseConfigurator\ConfigurableResponseCacheConfigurator
+#        arguments:
+#            - '$content.view_cache$'
+#            - '$content.ttl_cache$'
+#            - '$content.default_ttl$'
+
+    ezplatform.view_cache.default_response_configurator:
+        class: EzSystems\PlatformHttpCacheBundle\ResponseConfigurator\ExpressionResponseCacheConfigurator
+        arguments:
+            - 'response.getStatusCode() >= 200'
+            - '@ezplatform.view_cache.default_configuration'
+
+    ezplatform.view_cache.error_response_configurator:
+        class: EzSystems\PlatformHttpCacheBundle\ResponseConfigurator\ExpressionResponseCacheConfigurator
+        arguments:
+            - 'response.getStatusCode() >= 400'
+            - '@ezplatform.view_cache.error_configuration'
+        calls:
+            - ['setSuccessor', ['@ezplatform.view_cache.default_response_configurator']]
+
+    ezplatform.view_cache.response_configurator:
+        alias: ezplatform.view_cache.error_response_configurator
 
     ezplatform.view_cache.response_tagger.dispatcher:
         class: EzSystems\PlatformHttpCacheBundle\ResponseTagger\Delegator\DispatcherTagger
